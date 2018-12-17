@@ -22,7 +22,6 @@ static handle_t *ext4_get_nojournal(void)
 	return handle;
 }
 
-
 /* Decrement the non-pointer handle value */
 static void ext4_put_nojournal(handle_t *handle)
 {
@@ -43,6 +42,9 @@ static int ext4_journal_check_start(struct super_block *sb)
 {
 	journal_t *journal;
 
+	// print by hello world message
+	printk(KERN_WARNING "hello world");
+
 	might_sleep();
 
 	if (unlikely(ext4_forced_shutdown(EXT4_SB(sb))))
@@ -57,7 +59,8 @@ static int ext4_journal_check_start(struct super_block *sb)
 	 * backs (eg. EIO in the commit thread), then we still need to
 	 * take the FS itself readonly cleanly.
 	 */
-	if (journal && is_journal_aborted(journal)) {
+	if (journal && is_journal_aborted(journal))
+	{
 		ext4_abort(sb, "Detected aborted journal");
 		return -EROFS;
 	}
@@ -65,7 +68,7 @@ static int ext4_journal_check_start(struct super_block *sb)
 }
 
 handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
-				  int type, int blocks, int rsv_blocks)
+								  int type, int blocks, int rsv_blocks)
 {
 	journal_t *journal;
 	int err;
@@ -79,7 +82,7 @@ handle_t *__ext4_journal_start_sb(struct super_block *sb, unsigned int line,
 	if (!journal)
 		return ext4_get_nojournal();
 	return jbd2__journal_start(journal, blocks, rsv_blocks, GFP_NOFS,
-				   type, line);
+							   type, line);
 }
 
 int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
@@ -88,13 +91,15 @@ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
 	int err;
 	int rc;
 
-	if (!ext4_handle_valid(handle)) {
+	if (!ext4_handle_valid(handle))
+	{
 		ext4_put_nojournal(handle);
 		return 0;
 	}
 
 	err = handle->h_err;
-	if (!handle->h_transaction) {
+	if (!handle->h_transaction)
+	{
 		rc = jbd2_journal_stop(handle);
 		return err ? err : rc;
 	}
@@ -110,7 +115,7 @@ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)
 }
 
 handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
-					int type)
+										int type)
 {
 	struct super_block *sb;
 	int err;
@@ -120,9 +125,10 @@ handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
 
 	sb = handle->h_journal->j_private;
 	trace_ext4_journal_start_reserved(sb, handle->h_buffer_credits,
-					  _RET_IP_);
+									  _RET_IP_);
 	err = ext4_journal_check_start(sb);
-	if (err < 0) {
+	if (err < 0)
+	{
 		jbd2_journal_free_reserved(handle);
 		return ERR_PTR(err);
 	}
@@ -134,9 +140,9 @@ handle_t *__ext4_journal_start_reserved(handle_t *handle, unsigned int line,
 }
 
 static void ext4_journal_abort_handle(const char *caller, unsigned int line,
-				      const char *err_fn,
-				      struct buffer_head *bh,
-				      handle_t *handle, int err)
+									  const char *err_fn,
+									  struct buffer_head *bh,
+									  handle_t *handle, int err)
 {
 	char nbuf[16];
 	const char *errstr = ext4_decode_error(NULL, err, nbuf);
@@ -153,23 +159,24 @@ static void ext4_journal_abort_handle(const char *caller, unsigned int line,
 		return;
 
 	printk(KERN_ERR "EXT4-fs: %s:%d: aborting transaction: %s in %s\n",
-	       caller, line, errstr, err_fn);
+		   caller, line, errstr, err_fn);
 
 	jbd2_journal_abort_handle(handle);
 }
 
 int __ext4_journal_get_write_access(const char *where, unsigned int line,
-				    handle_t *handle, struct buffer_head *bh)
+									handle_t *handle, struct buffer_head *bh)
 {
 	int err = 0;
 
 	might_sleep();
 
-	if (ext4_handle_valid(handle)) {
+	if (ext4_handle_valid(handle))
+	{
 		err = jbd2_journal_get_write_access(handle, bh);
 		if (err)
 			ext4_journal_abort_handle(where, line, __func__, bh,
-						  handle, err);
+									  handle, err);
 	}
 	return err;
 }
@@ -187,8 +194,8 @@ int __ext4_journal_get_write_access(const char *where, unsigned int line,
  * call into ext4_journal_revoke() to put the buffer head.
  */
 int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
-		  int is_metadata, struct inode *inode,
-		  struct buffer_head *bh, ext4_fsblk_t blocknr)
+				  int is_metadata, struct inode *inode,
+				  struct buffer_head *bh, ext4_fsblk_t blocknr)
 {
 	int err;
 
@@ -198,12 +205,13 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
 	BUFFER_TRACE(bh, "enter");
 
 	jbd_debug(4, "forgetting bh %p: is_metadata = %d, mode %o, "
-		  "data mode %x\n",
-		  bh, is_metadata, inode->i_mode,
-		  test_opt(inode->i_sb, DATA_FLAGS));
+				 "data mode %x\n",
+			  bh, is_metadata, inode->i_mode,
+			  test_opt(inode->i_sb, DATA_FLAGS));
 
 	/* In the no journal case, we can just do a bforget and return */
-	if (!ext4_handle_valid(handle)) {
+	if (!ext4_handle_valid(handle))
+	{
 		bforget(bh);
 		return 0;
 	}
@@ -214,13 +222,15 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
 	 * data blocks. */
 
 	if (test_opt(inode->i_sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA ||
-	    (!is_metadata && !ext4_should_journal_data(inode))) {
-		if (bh) {
+		(!is_metadata && !ext4_should_journal_data(inode)))
+	{
+		if (bh)
+		{
 			BUFFER_TRACE(bh, "call jbd2_journal_forget");
 			err = jbd2_journal_forget(handle, bh);
 			if (err)
 				ext4_journal_abort_handle(where, line, __func__,
-							  bh, handle, err);
+										  bh, handle, err);
 			return err;
 		}
 		return 0;
@@ -231,33 +241,35 @@ int __ext4_forget(const char *where, unsigned int line, handle_t *handle,
 	 */
 	BUFFER_TRACE(bh, "call jbd2_journal_revoke");
 	err = jbd2_journal_revoke(handle, blocknr, bh);
-	if (err) {
+	if (err)
+	{
 		ext4_journal_abort_handle(where, line, __func__,
-					  bh, handle, err);
+								  bh, handle, err);
 		__ext4_abort(inode->i_sb, where, line,
-			   "error %d when attempting revoke", err);
+					 "error %d when attempting revoke", err);
 	}
 	BUFFER_TRACE(bh, "exit");
 	return err;
 }
 
 int __ext4_journal_get_create_access(const char *where, unsigned int line,
-				handle_t *handle, struct buffer_head *bh)
+									 handle_t *handle, struct buffer_head *bh)
 {
 	int err = 0;
 
-	if (ext4_handle_valid(handle)) {
+	if (ext4_handle_valid(handle))
+	{
 		err = jbd2_journal_get_create_access(handle, bh);
 		if (err)
 			ext4_journal_abort_handle(where, line, __func__,
-						  bh, handle, err);
+									  bh, handle, err);
 	}
 	return err;
 }
 
 int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
-				 handle_t *handle, struct inode *inode,
-				 struct buffer_head *bh)
+								 handle_t *handle, struct inode *inode,
+								 struct buffer_head *bh)
 {
 	int err = 0;
 
@@ -265,48 +277,55 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
 
 	set_buffer_meta(bh);
 	set_buffer_prio(bh);
-	if (ext4_handle_valid(handle)) {
+	if (ext4_handle_valid(handle))
+	{
 		err = jbd2_journal_dirty_metadata(handle, bh);
 		/* Errors can only happen due to aborted journal or a nasty bug */
-		if (!is_handle_aborted(handle) && WARN_ON_ONCE(err)) {
+		if (!is_handle_aborted(handle) && WARN_ON_ONCE(err))
+		{
 			ext4_journal_abort_handle(where, line, __func__, bh,
-						  handle, err);
-			if (inode == NULL) {
+									  handle, err);
+			if (inode == NULL)
+			{
 				pr_err("EXT4: jbd2_journal_dirty_metadata "
-				       "failed: handle type %u started at "
-				       "line %u, credits %u/%u, errcode %d",
-				       handle->h_type,
-				       handle->h_line_no,
-				       handle->h_requested_credits,
-				       handle->h_buffer_credits, err);
+					   "failed: handle type %u started at "
+					   "line %u, credits %u/%u, errcode %d",
+					   handle->h_type,
+					   handle->h_line_no,
+					   handle->h_requested_credits,
+					   handle->h_buffer_credits, err);
 				return err;
 			}
 			ext4_error_inode(inode, where, line,
-					 bh->b_blocknr,
-					 "journal_dirty_metadata failed: "
-					 "handle type %u started at line %u, "
-					 "credits %u/%u, errcode %d",
-					 handle->h_type,
-					 handle->h_line_no,
-					 handle->h_requested_credits,
-					 handle->h_buffer_credits, err);
+							 bh->b_blocknr,
+							 "journal_dirty_metadata failed: "
+							 "handle type %u started at line %u, "
+							 "credits %u/%u, errcode %d",
+							 handle->h_type,
+							 handle->h_line_no,
+							 handle->h_requested_credits,
+							 handle->h_buffer_credits, err);
 		}
-	} else {
+	}
+	else
+	{
 		if (inode)
 			mark_buffer_dirty_inode(bh, inode);
 		else
 			mark_buffer_dirty(bh);
-		if (inode && inode_needs_sync(inode)) {
+		if (inode && inode_needs_sync(inode))
+		{
 			sync_dirty_buffer(bh);
-			if (buffer_req(bh) && !buffer_uptodate(bh)) {
+			if (buffer_req(bh) && !buffer_uptodate(bh))
+			{
 				struct ext4_super_block *es;
 
 				es = EXT4_SB(inode->i_sb)->s_es;
 				es->s_last_error_block =
 					cpu_to_le64(bh->b_blocknr);
 				ext4_error_inode(inode, where, line,
-						 bh->b_blocknr,
-					"IO error syncing itable block");
+								 bh->b_blocknr,
+								 "IO error syncing itable block");
 				err = -EIO;
 			}
 		}
@@ -315,18 +334,20 @@ int __ext4_handle_dirty_metadata(const char *where, unsigned int line,
 }
 
 int __ext4_handle_dirty_super(const char *where, unsigned int line,
-			      handle_t *handle, struct super_block *sb)
+							  handle_t *handle, struct super_block *sb)
 {
 	struct buffer_head *bh = EXT4_SB(sb)->s_sbh;
 	int err = 0;
 
 	ext4_superblock_csum_set(sb);
-	if (ext4_handle_valid(handle)) {
+	if (ext4_handle_valid(handle))
+	{
 		err = jbd2_journal_dirty_metadata(handle, bh);
 		if (err)
 			ext4_journal_abort_handle(where, line, __func__,
-						  bh, handle, err);
-	} else
+									  bh, handle, err);
+	}
+	else
 		mark_buffer_dirty(bh);
 	return err;
 }
