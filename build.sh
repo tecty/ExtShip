@@ -6,5 +6,6 @@ make -j12
 sudo make modules_install -j12
 sudo make install -j12
 
-
+# reboot the system
+sudo reboot
 
