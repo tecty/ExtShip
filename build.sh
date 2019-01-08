@@ -1,6 +1,10 @@
 #/bin/bash
 
-cp ext4Host/*  ../linux/fs/ext4
+# copy the source kernel 
+cp host/ext4/  ../linux/fs/ext4 -r
+cp host/jbd2/  ../linux/fs/jbd2 -r
+
+# build the kernel
 cd ../linux/
 make -j12
 sudo make modules_install -j12
