@@ -206,6 +206,7 @@ static void __flush_batch(journal_t *journal, int *batch_count)
 	for (i = 0; i < *batch_count; i++)
 	{
 		struct buffer_head *bh = journal->j_chkpt_bhs[i];
+		kprntf(KERN_INFO, "ID:%d, length", i, journal->j_chkpt_bhs[i].b_size);
 		BUFFER_TRACE(bh, "brelse");
 		__brelse(bh);
 	}
@@ -227,8 +228,6 @@ int jbd2_log_do_checkpoint(journal_t *journal)
 	transaction_t *transaction;
 	tid_t this_tid;
 	int result, batch_count = 0;
-
-	printk(KERN_INFO "Start to checkpointing");
 
 	jbd_debug(1, "Start checkpoint\n");
 
