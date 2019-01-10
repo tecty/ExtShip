@@ -43,7 +43,7 @@ static int ext4_journal_check_start(struct super_block *sb)
 	journal_t *journal;
 
 	// print by hello world message
-	printk(KERN_WARNING "hello world");
+	// printk(KERN_WARNING "hello world");
 
 	might_sleep();
 
