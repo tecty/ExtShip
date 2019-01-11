@@ -206,7 +206,7 @@ static void __flush_batch(journal_t *journal, int *batch_count)
 	for (i = 0; i < *batch_count; i++)
 	{
 		struct buffer_head *bh = journal->j_chkpt_bhs[i];
-		kprntf(KERN_INFO, "ID:%d, length:\n", i);
+		kprntf(KERN_INFO "ID:%d, length:\n", i);
 		BUFFER_TRACE(bh, "brelse");
 		__brelse(bh);
 	}
