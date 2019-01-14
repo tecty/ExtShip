@@ -195,6 +195,7 @@ void __jbd2_log_wait_for_space(journal_t *journal)
 
 static void __flush_batch(journal_t *journal, int *batch_count)
 {
+	printk(KERN_INFO "flush batch is called");
 	int i;
 	struct blk_plug plug;
 
@@ -255,6 +256,7 @@ int jbd2_log_do_checkpoint(journal_t *journal)
 		transaction->t_chp_stats.cs_chp_time = jiffies;
 	this_tid = transaction->t_tid;
 restart:
+	printk(KERN_INFO "log do checkpoint - restart is here");
 	/*
    * If someone cleaned up this transaction while we slept, we're
    * done (maybe it's a new transaction, but it fell at the same
