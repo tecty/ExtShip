@@ -252,7 +252,12 @@ int jbd2_log_do_checkpoint(journal_t *journal)
 	result = 0;
 	spin_lock(&journal->j_list_lock);
 	if (!journal->j_checkpoint_transactions)
+	{
+		printk(KERN_INFO
+			   "There is no checkpoint transactions,"
+			   "go out\n");
 		goto out;
+	}
 	transaction = journal->j_checkpoint_transactions;
 	if (transaction->t_chp_stats.cs_chp_time == 0)
 		transaction->t_chp_stats.cs_chp_time = jiffies;
