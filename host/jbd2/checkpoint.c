@@ -232,6 +232,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
 
 	jbd_debug(1, "Start checkpoint\n");
 
+	printk(KERN_INFO "log do checkpoint is called");
+
 	/*
    * First thing: if there are any transactions in the log which
    * don't need checkpointing, just eliminate them from the
