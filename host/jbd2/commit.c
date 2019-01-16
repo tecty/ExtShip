@@ -38,7 +38,8 @@ static void journal_end_buffer_io_sync(struct buffer_head *bh, int uptodate)
 		set_buffer_uptodate(bh);
 	else
 		clear_buffer_uptodate(bh);
-	if (orig_bh) {
+	if (orig_bh)
+	{
 		clear_bit_unlock(BH_Shadow, &orig_bh->b_state);
 		smp_mb__after_atomic();
 		wake_up_bit(&orig_bh->b_state, BH_Shadow);
@@ -114,9 +115,9 @@ static void jbd2_commit_block_csum_set(journal_t *j, struct buffer_head *bh)
  * Returns 1 if the journal needs to be aborted or 0 on success
  */
 static int journal_submit_commit_record(journal_t *journal,
-					transaction_t *commit_transaction,
-					struct buffer_head **cbh,
-					__u32 crc32_sum)
+										transaction_t *commit_transaction,
+										struct buffer_head **cbh,
+										__u32 crc32_sum)
 {
 	struct commit_header *tmp;
 	struct buffer_head *bh;
@@ -129,7 +130,7 @@ static int journal_submit_commit_record(journal_t *journal,
 		return 0;
 
 	bh = jbd2_journal_get_descriptor_buffer(commit_transaction,
-						JBD2_COMMIT_BLOCK);
+											JBD2_COMMIT_BLOCK);
 	if (!bh)
 		return 1;
 
@@ -138,10 +139,11 @@ static int journal_submit_commit_record(journal_t *journal,
 	tmp->h_commit_sec = cpu_to_be64(now.tv_sec);
 	tmp->h_commit_nsec = cpu_to_be32(now.tv_nsec);
 
-	if (jbd2_has_feature_checksum(journal)) {
-		tmp->h_chksum_type 	= JBD2_CRC32_CHKSUM;
-		tmp->h_chksum_size 	= JBD2_CRC32_CHKSUM_SIZE;
-		tmp->h_chksum[0] 	= cpu_to_be32(crc32_sum);
+	if (jbd2_has_feature_checksum(journal))
+	{
+		tmp->h_chksum_type = JBD2_CRC32_CHKSUM;
+		tmp->h_chksum_size = JBD2_CRC32_CHKSUM_SIZE;
+		tmp->h_chksum[0] = cpu_to_be32(crc32_sum);
 	}
 	jbd2_commit_block_csum_set(journal, bh);
 
@@ -152,9 +154,9 @@ static int journal_submit_commit_record(journal_t *journal,
 	bh->b_end_io = journal_end_buffer_io_sync;
 
 	if (journal->j_flags & JBD2_BARRIER &&
-	    !jbd2_has_feature_async_commit(journal))
+		!jbd2_has_feature_async_commit(journal))
 		ret = submit_bh(REQ_OP_WRITE,
-			REQ_SYNC | REQ_PREFLUSH | REQ_FUA, bh);
+						REQ_SYNC | REQ_PREFLUSH | REQ_FUA, bh);
 	else
 		ret = submit_bh(REQ_OP_WRITE, REQ_SYNC, bh);
 
@@ -167,7 +169,7 @@ static int journal_submit_commit_record(journal_t *journal,
  * allows to write the commit record asynchronously.
  */
 static int journal_wait_on_commit_record(journal_t *journal,
-					 struct buffer_head *bh)
+										 struct buffer_head *bh)
 {
 	int ret = 0;
 
@@ -176,7 +178,7 @@ static int journal_wait_on_commit_record(journal_t *journal,
 
 	if (unlikely(!buffer_uptodate(bh)))
 		ret = -EIO;
-	put_bh(bh);            /* One for getblk() */
+	put_bh(bh); /* One for getblk() */
 
 	return ret;
 }
@@ -191,7 +193,7 @@ static int journal_submit_inode_data_buffers(struct address_space *mapping)
 {
 	int ret;
 	struct writeback_control wbc = {
-		.sync_mode =  WB_SYNC_ALL,
+		.sync_mode = WB_SYNC_ALL,
 		.nr_to_write = mapping->nrpages * 2,
 		.range_start = 0,
 		.range_end = i_size_read(mapping->host),
@@ -210,14 +212,17 @@ static int journal_submit_inode_data_buffers(struct address_space *mapping)
  * operate on from being released while we write out pages.
  */
 static int journal_submit_data_buffers(journal_t *journal,
-		transaction_t *commit_transaction)
+									   transaction_t *commit_transaction)
 {
+	printk(KERN_INFO "In commit, submit the data buffer");
+
 	struct jbd2_inode *jinode;
 	int err, ret = 0;
 	struct address_space *mapping;
 
 	spin_lock(&journal->j_list_lock);
-	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
+	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list)
+	{
 		if (!(jinode->i_flags & JI_WRITE_DATA))
 			continue;
 		mapping = jinode->i_vfs_inode->i_mapping;
@@ -249,20 +254,21 @@ static int journal_submit_data_buffers(journal_t *journal,
  *
  */
 static int journal_finish_inode_data_buffers(journal_t *journal,
-		transaction_t *commit_transaction)
+											 transaction_t *commit_transaction)
 {
 	struct jbd2_inode *jinode, *next_i;
 	int err, ret = 0;
 
 	/* For locking, see the comment in journal_submit_data_buffers() */
 	spin_lock(&journal->j_list_lock);
-	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
+	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list)
+	{
 		if (!(jinode->i_flags & JI_WAIT_DATA))
 			continue;
 		jinode->i_flags |= JI_COMMIT_RUNNING;
 		spin_unlock(&journal->j_list_lock);
 		err = filemap_fdatawait_keep_errors(
-				jinode->i_vfs_inode->i_mapping);
+			jinode->i_vfs_inode->i_mapping);
 		if (!ret)
 			ret = err;
 		spin_lock(&journal->j_list_lock);
@@ -273,14 +279,18 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
 
 	/* Now refile inode to proper lists */
 	list_for_each_entry_safe(jinode, next_i,
-				 &commit_transaction->t_inode_list, i_list) {
+							 &commit_transaction->t_inode_list, i_list)
+	{
 		list_del(&jinode->i_list);
-		if (jinode->i_next_transaction) {
+		if (jinode->i_next_transaction)
+		{
 			jinode->i_transaction = jinode->i_next_transaction;
 			jinode->i_next_transaction = NULL;
 			list_add(&jinode->i_list,
-				&jinode->i_transaction->t_inode_list);
-		} else {
+					 &jinode->i_transaction->t_inode_list);
+		}
+		else
+		{
 			jinode->i_transaction = NULL;
 		}
 	}
@@ -297,14 +307,14 @@ static __u32 jbd2_checksum_data(__u32 crc32_sum, struct buffer_head *bh)
 
 	addr = kmap_atomic(page);
 	checksum = crc32_be(crc32_sum,
-		(void *)(addr + offset_in_page(bh->b_data)), bh->b_size);
+						(void *)(addr + offset_in_page(bh->b_data)), bh->b_size);
 	kunmap_atomic(addr);
 
 	return checksum;
 }
 
 static void write_tag_block(journal_t *j, journal_block_tag_t *tag,
-				   unsigned long long block)
+							unsigned long long block)
 {
 	tag->t_blocknr = cpu_to_be32(block & (u32)~0);
 	if (jbd2_has_feature_64bit(j))
@@ -312,7 +322,7 @@ static void write_tag_block(journal_t *j, journal_block_tag_t *tag,
 }
 
 static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
-				    struct buffer_head *bh, __u32 sequence)
+									struct buffer_head *bh, __u32 sequence)
 {
 	journal_block_tag3_t *tag3 = (journal_block_tag3_t *)tag;
 	struct page *page = bh->b_page;
@@ -327,7 +337,7 @@ static void jbd2_block_tag_csum_set(journal_t *j, journal_block_tag_t *tag,
 	addr = kmap_atomic(page);
 	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&seq, sizeof(seq));
 	csum32 = jbd2_chksum(j, csum32, addr + offset_in_page(bh->b_data),
-			     bh->b_size);
+						 bh->b_size);
 	kunmap_atomic(addr);
 
 	if (jbd2_has_feature_csum3(j))
@@ -372,6 +382,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 	LIST_HEAD(io_bufs);
 	LIST_HEAD(log_bufs);
 
+	printk(KERN_INFO "Commit tr is called");
+
 	if (jbd2_journal_has_csum_v2or3(journal))
 		csum_size = sizeof(struct jbd2_journal_block_tail);
 
@@ -381,7 +393,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 	 */
 
 	/* Do we need to erase the effects of a prior jbd2_journal_flush? */
-	if (journal->j_flags & JBD2_FLUSHED) {
+	if (journal->j_flags & JBD2_FLUSHED)
+	{
 		jbd_debug(3, "super block updated\n");
 		mutex_lock_io(&journal->j_checkpoint_mutex);
 		/*
@@ -391,11 +404,13 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 		 * flushed only with transaction commit.
 		 */
 		jbd2_journal_update_sb_log_tail(journal,
-						journal->j_tail_sequence,
-						journal->j_tail,
-						REQ_SYNC);
+										journal->j_tail_sequence,
+										journal->j_tail,
+										REQ_SYNC);
 		mutex_unlock(&journal->j_checkpoint_mutex);
-	} else {
+	}
+	else
+	{
 		jbd_debug(3, "superblock not updated\n");
 	}
 
@@ -406,7 +421,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 
 	trace_jbd2_start_commit(journal, commit_transaction);
 	jbd_debug(1, "JBD2: starting commit of transaction %d\n",
-			commit_transaction->t_tid);
+			  commit_transaction->t_tid);
 
 	write_lock(&journal->j_state_lock);
 	J_ASSERT(commit_transaction->t_state == T_RUNNING);
@@ -419,17 +434,19 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 	if (commit_transaction->t_requested)
 		stats.run.rs_request_delay =
 			jbd2_time_diff(commit_transaction->t_requested,
-				       stats.run.rs_locked);
+						   stats.run.rs_locked);
 	stats.run.rs_running = jbd2_time_diff(commit_transaction->t_start,
-					      stats.run.rs_locked);
+										  stats.run.rs_locked);
 
 	spin_lock(&commit_transaction->t_handle_lock);
-	while (atomic_read(&commit_transaction->t_updates)) {
+	while (atomic_read(&commit_transaction->t_updates))
+	{
 		DEFINE_WAIT(wait);
 
 		prepare_to_wait(&journal->j_wait_updates, &wait,
-					TASK_UNINTERRUPTIBLE);
-		if (atomic_read(&commit_transaction->t_updates)) {
+						TASK_UNINTERRUPTIBLE);
+		if (atomic_read(&commit_transaction->t_updates))
+		{
 			spin_unlock(&commit_transaction->t_handle_lock);
 			write_unlock(&journal->j_state_lock);
 			schedule();
@@ -440,8 +457,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 	}
 	spin_unlock(&commit_transaction->t_handle_lock);
 
-	J_ASSERT (atomic_read(&commit_transaction->t_outstanding_credits) <=
-			journal->j_max_transaction_buffers);
+	J_ASSERT(atomic_read(&commit_transaction->t_outstanding_credits) <=
+			 journal->j_max_transaction_buffers);
 
 	/*
 	 * First thing we are allowed to do is to discard any remaining
@@ -459,14 +476,16 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 	 * that multiple jbd2_journal_get_write_access() calls to the same
 	 * buffer are perfectly permissible.
 	 */
-	while (commit_transaction->t_reserved_list) {
+	while (commit_transaction->t_reserved_list)
+	{
 		jh = commit_transaction->t_reserved_list;
 		JBUFFER_TRACE(jh, "reserved, unused: refile");
 		/*
 		 * A jbd2_journal_get_undo_access()+jbd2_journal_release_buffer() may
 		 * leave undo-committed data.
 		 */
-		if (jh->b_committed_data) {
+		if (jh->b_committed_data)
+		{
 			struct buffer_head *bh = jh2bh(jh);
 
 			jbd_lock_bh_state(bh);
@@ -503,12 +522,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 	 * Reserved credits cannot be claimed anymore, free them
 	 */
 	atomic_sub(atomic_read(&journal->j_reserved_credits),
-		   &commit_transaction->t_outstanding_credits);
+			   &commit_transaction->t_outstanding_credits);
 
 	trace_jbd2_commit_flushing(journal, commit_transaction);
 	stats.run.rs_flushing = jiffies;
 	stats.run.rs_locked = jbd2_time_diff(stats.run.rs_locked,
-					     stats.run.rs_flushing);
+										 stats.run.rs_flushing);
 
 	commit_transaction->t_state = T_FLUSH;
 	journal->j_committing_transaction = commit_transaction;
@@ -545,18 +564,19 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 	trace_jbd2_commit_logging(journal, commit_transaction);
 	stats.run.rs_logging = jiffies;
 	stats.run.rs_flushing = jbd2_time_diff(stats.run.rs_flushing,
-					       stats.run.rs_logging);
+										   stats.run.rs_logging);
 	stats.run.rs_blocks =
 		atomic_read(&commit_transaction->t_outstanding_credits);
 	stats.run.rs_blocks_logged = 0;
 
 	J_ASSERT(commit_transaction->t_nr_buffers <=
-		 atomic_read(&commit_transaction->t_outstanding_credits));
+			 atomic_read(&commit_transaction->t_outstanding_credits));
 
 	err = 0;
 	bufs = 0;
 	descriptor = NULL;
-	while (commit_transaction->t_buffers) {
+	while (commit_transaction->t_buffers)
+	{
 
 		/* Find the next buffer to be journaled... */
 
@@ -565,13 +585,12 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 		/* If we're in abort mode, we just un-journal the buffer and
 		   release it. */
 
-		if (is_journal_aborted(journal)) {
+		if (is_journal_aborted(journal))
+		{
 			clear_buffer_jbddirty(jh2bh(jh));
 			JBUFFER_TRACE(jh, "journal is aborting: refile");
 			jbd2_buffer_abort_trigger(jh,
-						  jh->b_frozen_data ?
-						  jh->b_frozen_triggers :
-						  jh->b_triggers);
+									  jh->b_frozen_data ? jh->b_frozen_triggers : jh->b_triggers);
 			jbd2_journal_refile_buffer(journal, jh);
 			/* If that was the last one, we need to clean up
 			 * any descriptor buffers which may have been
@@ -585,25 +604,27 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 		/* Make sure we have a descriptor block in which to
 		   record the metadata buffer. */
 
-		if (!descriptor) {
-			J_ASSERT (bufs == 0);
+		if (!descriptor)
+		{
+			J_ASSERT(bufs == 0);
 
 			jbd_debug(4, "JBD2: get descriptor\n");
 
 			descriptor = jbd2_journal_get_descriptor_buffer(
-							commit_transaction,
-							JBD2_DESCRIPTOR_BLOCK);
-			if (!descriptor) {
+				commit_transaction,
+				JBD2_DESCRIPTOR_BLOCK);
+			if (!descriptor)
+			{
 				jbd2_journal_abort(journal, -EIO);
 				continue;
 			}
 
 			jbd_debug(4, "JBD2: got buffer %llu (%p)\n",
-				(unsigned long long)descriptor->b_blocknr,
-				descriptor->b_data);
+					  (unsigned long long)descriptor->b_blocknr,
+					  descriptor->b_data);
 			tagp = &descriptor->b_data[sizeof(journal_header_t)];
 			space_left = descriptor->b_size -
-						sizeof(journal_header_t);
+						 sizeof(journal_header_t);
 			first_tag = 1;
 			set_buffer_jwrite(descriptor);
 			set_buffer_dirty(descriptor);
@@ -621,7 +642,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 		/* If the block mapping failed, just abandon the buffer
 		   and repeat this loop: we'll fall into the
 		   refile-on-abort condition above. */
-		if (err) {
+		if (err)
+		{
 			jbd2_journal_abort(journal, err);
 			continue;
 		}
@@ -645,8 +667,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 		set_bit(BH_JWrite, &jh2bh(jh)->b_state);
 		JBUFFER_TRACE(jh, "ph3: write metadata");
 		flags = jbd2_journal_write_metadata_buffer(commit_transaction,
-						jh, &wbuf[bufs], blocknr);
-		if (flags < 0) {
+												   jh, &wbuf[bufs], blocknr);
+		if (flags < 0)
+		{
 			jbd2_journal_abort(journal, flags);
 			continue;
 		}
@@ -661,17 +684,18 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 		if (!first_tag)
 			tag_flag |= JBD2_FLAG_SAME_UUID;
 
-		tag = (journal_block_tag_t *) tagp;
+		tag = (journal_block_tag_t *)tagp;
 		write_tag_block(journal, tag, jh2bh(jh)->b_blocknr);
 		tag->t_flags = cpu_to_be16(tag_flag);
 		jbd2_block_tag_csum_set(journal, tag, wbuf[bufs],
-					commit_transaction->t_tid);
+								commit_transaction->t_tid);
 		tagp += tag_bytes;
 		space_left -= tag_bytes;
 		bufs++;
 
-		if (first_tag) {
-			memcpy (tagp, journal->j_uuid, 16);
+		if (first_tag)
+		{
+			memcpy(tagp, journal->j_uuid, 16);
 			tagp += 16;
 			space_left -= 16;
 			first_tag = 0;
@@ -681,8 +705,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 		   let the IO rip! */
 
 		if (bufs == journal->j_wbufsize ||
-		    commit_transaction->t_buffers == NULL ||
-		    space_left < tag_bytes + 16 + csum_size) {
+			commit_transaction->t_buffers == NULL ||
+			space_left < tag_bytes + 16 + csum_size)
+		{
 
 			jbd_debug(4, "JBD2: Submit %d IOs\n", bufs);
 
@@ -693,15 +718,17 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 			tag->t_flags |= cpu_to_be16(JBD2_FLAG_LAST_TAG);
 
 			jbd2_descriptor_block_csum_set(journal, descriptor);
-start_journal_io:
-			for (i = 0; i < bufs; i++) {
+		start_journal_io:
+			for (i = 0; i < bufs; i++)
+			{
 				struct buffer_head *bh = wbuf[i];
 				/*
 				 * Compute checksum.
 				 */
-				if (jbd2_has_feature_checksum(journal)) {
+				if (jbd2_has_feature_checksum(journal))
+				{
 					crc32_sum =
-					    jbd2_checksum_data(crc32_sum, bh);
+						jbd2_checksum_data(crc32_sum, bh);
 				}
 
 				lock_buffer(bh);
@@ -721,10 +748,12 @@ start_journal_io:
 	}
 
 	err = journal_finish_inode_data_buffers(journal, commit_transaction);
-	if (err) {
+	if (err)
+	{
 		printk(KERN_WARNING
-			"JBD2: Detected IO errors while flushing file data "
-		       "on %s\n", journal->j_devname);
+			   "JBD2: Detected IO errors while flushing file data "
+			   "on %s\n",
+			   journal->j_devname);
 		if (journal->j_flags & JBD2_ABORT_ON_SYNCDATA_ERR)
 			jbd2_journal_abort(journal, err);
 		err = 0;
@@ -741,7 +770,8 @@ start_journal_io:
 		jbd2_journal_get_log_tail(journal, &first_tid, &first_block);
 
 	write_lock(&journal->j_state_lock);
-	if (update_tail) {
+	if (update_tail)
+	{
 		long freed = first_block - journal->j_tail;
 
 		if (first_block < journal->j_tail)
@@ -760,14 +790,15 @@ start_journal_io:
 	 * the commit record
 	 */
 	if (commit_transaction->t_need_data_flush &&
-	    (journal->j_fs_dev != journal->j_dev) &&
-	    (journal->j_flags & JBD2_BARRIER))
+		(journal->j_fs_dev != journal->j_dev) &&
+		(journal->j_flags & JBD2_BARRIER))
 		blkdev_issue_flush(journal->j_fs_dev, GFP_NOFS, NULL);
 
 	/* Done it all: now write the commit record asynchronously. */
-	if (jbd2_has_feature_async_commit(journal)) {
+	if (jbd2_has_feature_async_commit(journal))
+	{
 		err = journal_submit_commit_record(journal, commit_transaction,
-						 &cbh, crc32_sum);
+										   &cbh, crc32_sum);
 		if (err)
 			__jbd2_journal_abort_hard(journal);
 	}
@@ -787,10 +818,11 @@ start_journal_io:
 
 	jbd_debug(3, "JBD2: commit phase 3\n");
 
-	while (!list_empty(&io_bufs)) {
+	while (!list_empty(&io_bufs))
+	{
 		struct buffer_head *bh = list_entry(io_bufs.prev,
-						    struct buffer_head,
-						    b_assoc_buffers);
+											struct buffer_head,
+											b_assoc_buffers);
 
 		wait_on_buffer(bh);
 		cond_resched();
@@ -825,12 +857,13 @@ start_journal_io:
 		__brelse(bh);
 	}
 
-	J_ASSERT (commit_transaction->t_shadow_list == NULL);
+	J_ASSERT(commit_transaction->t_shadow_list == NULL);
 
 	jbd_debug(3, "JBD2: commit phase 4\n");
 
 	/* Here we wait for the revoke record and descriptor record buffers */
-	while (!list_empty(&log_bufs)) {
+	while (!list_empty(&log_bufs))
+	{
 		struct buffer_head *bh;
 
 		bh = list_entry(log_bufs.prev, struct buffer_head, b_assoc_buffers);
@@ -843,8 +876,8 @@ start_journal_io:
 		BUFFER_TRACE(bh, "ph5: control buffer writeout done: unfile");
 		clear_buffer_jwrite(bh);
 		jbd2_unfile_log_bh(bh);
-		__brelse(bh);		/* One for getblk */
-		/* AKPM: bforget here */
+		__brelse(bh); /* One for getblk */
+					  /* AKPM: bforget here */
 	}
 
 	if (err)
@@ -856,16 +889,18 @@ start_journal_io:
 	commit_transaction->t_state = T_COMMIT_JFLUSH;
 	write_unlock(&journal->j_state_lock);
 
-	if (!jbd2_has_feature_async_commit(journal)) {
+	if (!jbd2_has_feature_async_commit(journal))
+	{
 		err = journal_submit_commit_record(journal, commit_transaction,
-						&cbh, crc32_sum);
+										   &cbh, crc32_sum);
 		if (err)
 			__jbd2_journal_abort_hard(journal);
 	}
 	if (cbh)
 		err = journal_wait_on_commit_record(journal, cbh);
 	if (jbd2_has_feature_async_commit(journal) &&
-	    journal->j_flags & JBD2_BARRIER) {
+		journal->j_flags & JBD2_BARRIER)
+	{
 		blkdev_issue_flush(journal->j_dev, GFP_NOFS, NULL);
 	}
 
@@ -898,7 +933,8 @@ restart_loop:
 	 * to this list we have to be careful and hold the j_list_lock.
 	 */
 	spin_lock(&journal->j_list_lock);
-	while (commit_transaction->t_forget) {
+	while (commit_transaction->t_forget)
+	{
 		transaction_t *cp_transaction;
 		struct buffer_head *bh;
 		int try_to_free = 0;
@@ -912,7 +948,7 @@ restart_loop:
 		 */
 		get_bh(bh);
 		jbd_lock_bh_state(bh);
-		J_ASSERT_JH(jh,	jh->b_transaction == commit_transaction);
+		J_ASSERT_JH(jh, jh->b_transaction == commit_transaction);
 
 		/*
 		 * If there is undo-protected committed data against
@@ -927,15 +963,19 @@ restart_loop:
 		 * We also know that the frozen data has already fired
 		 * its triggers if they exist, so we can clear that too.
 		 */
-		if (jh->b_committed_data) {
+		if (jh->b_committed_data)
+		{
 			jbd2_free(jh->b_committed_data, bh->b_size);
 			jh->b_committed_data = NULL;
-			if (jh->b_frozen_data) {
+			if (jh->b_frozen_data)
+			{
 				jh->b_committed_data = jh->b_frozen_data;
 				jh->b_frozen_data = NULL;
 				jh->b_frozen_triggers = NULL;
 			}
-		} else if (jh->b_frozen_data) {
+		}
+		else if (jh->b_frozen_data)
+		{
 			jbd2_free(jh->b_frozen_data, bh->b_size);
 			jh->b_frozen_data = NULL;
 			jh->b_frozen_triggers = NULL;
@@ -943,7 +983,8 @@ restart_loop:
 
 		spin_lock(&journal->j_list_lock);
 		cp_transaction = jh->b_cp_transaction;
-		if (cp_transaction) {
+		if (cp_transaction)
+		{
 			JBUFFER_TRACE(jh, "remove from old cp transaction");
 			cp_transaction->t_chp_stats.cs_dropped++;
 			__jbd2_journal_remove_checkpoint(jh);
@@ -959,7 +1000,8 @@ restart_loop:
 		* A buffer which has been freed while still being journaled by
 		* a previous transaction.
 		*/
-		if (buffer_freed(bh)) {
+		if (buffer_freed(bh))
+		{
 			/*
 			 * If the running transaction is the one containing
 			 * "add to orphan" operation (b_next_transaction !=
@@ -976,7 +1018,8 @@ restart_loop:
 			 * page.
 			 */
 			jh->b_modified = 0;
-			if (!jh->b_next_transaction) {
+			if (!jh->b_next_transaction)
+			{
 				clear_buffer_freed(bh);
 				clear_buffer_jbddirty(bh);
 				clear_buffer_mapped(bh);
@@ -986,12 +1029,15 @@ restart_loop:
 			}
 		}
 
-		if (buffer_jbddirty(bh)) {
+		if (buffer_jbddirty(bh))
+		{
 			JBUFFER_TRACE(jh, "add to new checkpointing trans");
 			__jbd2_journal_insert_checkpoint(jh, commit_transaction);
 			if (is_journal_aborted(journal))
 				clear_buffer_jbddirty(bh);
-		} else {
+		}
+		else
+		{
 			J_ASSERT_BH(bh, !buffer_dirty(bh));
 			/*
 			 * The buffer on BJ_Forget list and not jbddirty means
@@ -1009,7 +1055,7 @@ restart_loop:
 		__jbd2_journal_refile_buffer(jh);
 		jbd_unlock_bh_state(bh);
 		if (try_to_free)
-			release_buffer_page(bh);	/* Drops bh reference */
+			release_buffer_page(bh); /* Drops bh reference */
 		else
 			__brelse(bh);
 		cond_resched_lock(&journal->j_list_lock);
@@ -1027,7 +1073,8 @@ restart_loop:
 	 * Now recheck if some buffers did not get attached to the transaction
 	 * while the lock was dropped...
 	 */
-	if (commit_transaction->t_forget) {
+	if (commit_transaction->t_forget)
+	{
 		spin_unlock(&journal->j_list_lock);
 		write_unlock(&journal->j_state_lock);
 		goto restart_loop;
@@ -1036,11 +1083,14 @@ restart_loop:
 	/* Add the transaction to the checkpoint list
 	 * __journal_remove_checkpoint() can not destroy transaction
 	 * under us because it is not marked as T_FINISHED yet */
-	if (journal->j_checkpoint_transactions == NULL) {
+	if (journal->j_checkpoint_transactions == NULL)
+	{
 		journal->j_checkpoint_transactions = commit_transaction;
 		commit_transaction->t_cpnext = commit_transaction;
 		commit_transaction->t_cpprev = commit_transaction;
-	} else {
+	}
+	else
+	{
 		commit_transaction->t_cpnext =
 			journal->j_checkpoint_transactions;
 		commit_transaction->t_cpprev =
@@ -1048,7 +1098,7 @@ restart_loop:
 		commit_transaction->t_cpnext->t_cpprev =
 			commit_transaction;
 		commit_transaction->t_cpprev->t_cpnext =
-				commit_transaction;
+			commit_transaction;
 	}
 	spin_unlock(&journal->j_list_lock);
 
@@ -1060,7 +1110,7 @@ restart_loop:
 
 	commit_transaction->t_start = jiffies;
 	stats.run.rs_logging = jbd2_time_diff(stats.run.rs_logging,
-					      commit_transaction->t_start);
+										  commit_transaction->t_start);
 
 	/*
 	 * File the transaction statistics
@@ -1069,7 +1119,7 @@ restart_loop:
 	stats.run.rs_handle_count =
 		atomic_read(&commit_transaction->t_handle_count);
 	trace_jbd2_run_stats(journal->j_fs_dev->bd_dev,
-			     commit_transaction->t_tid, &stats.run);
+						 commit_transaction->t_tid, &stats.run);
 	stats.ts_requested = (commit_transaction->t_requested) ? 1 : 0;
 
 	commit_transaction->t_state = T_COMMIT_CALLBACK;
@@ -1084,7 +1134,8 @@ restart_loop:
 	 */
 	if (likely(journal->j_average_commit_time))
 		journal->j_average_commit_time = (commit_time +
-				journal->j_average_commit_time*3) / 4;
+										  journal->j_average_commit_time * 3) /
+										 4;
 	else
 		journal->j_average_commit_time = commit_time;
 
@@ -1095,14 +1146,15 @@ restart_loop:
 
 	trace_jbd2_end_commit(journal, commit_transaction);
 	jbd_debug(1, "JBD2: commit %d complete, head %d\n",
-		  journal->j_commit_sequence, journal->j_tail_sequence);
+			  journal->j_commit_sequence, journal->j_tail_sequence);
 
 	write_lock(&journal->j_state_lock);
 	spin_lock(&journal->j_list_lock);
 	commit_transaction->t_state = T_FINISHED;
 	/* Check if the transaction can be dropped now that we are finished */
 	if (commit_transaction->t_checkpoint_list == NULL &&
-	    commit_transaction->t_checkpoint_io_list == NULL) {
+		commit_transaction->t_checkpoint_io_list == NULL)
+	{
 		__jbd2_journal_drop_transaction(journal, commit_transaction);
 		jbd2_journal_free_transaction(commit_transaction);
 	}
