@@ -11,6 +11,7 @@ make CC="ccache gcc" -j12 && \
 sudo make CC="ccache gcc" modules_install -j12 && \
 sudo make CC="ccache gcc" install -j12 && \
 
+sudo rm /boot/*4.19* -f && \
+sudo update-grub2 && \
 # reboot the system
 sudo reboot
-
