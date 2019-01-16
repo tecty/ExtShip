@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# enable kernel debug print 
+sudo echo 8 > /proc/sys/kernel/printk
+
 # create mount point for our fs
 sudo mkdir -p /mnt/ext4
 
