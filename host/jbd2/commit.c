@@ -708,7 +708,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 			commit_transaction->t_buffers == NULL ||
 			space_left < tag_bytes + 16 + csum_size)
 		{
-
+			printk(KERN_INFO "JBD2: Submit %d IOs\n", bufs);
 			jbd_debug(4, "JBD2: Submit %d IOs\n", bufs);
 
 			/* Write an end-of-descriptor marker before
