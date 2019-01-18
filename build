@@ -7,11 +7,16 @@ cp host/jbd2/*  ../linux/fs/jbd2 -r
 
 # build the kernel
 cd ../linux/
+
+# remove the old version 
+sudo rm /boot/*4.19* -f 
+
+# start building the kernel
 make CC="ccache gcc" -j${1} && \
 sudo make CC="ccache gcc" modules_install -j${1} && \
 sudo make CC="ccache gcc" install -j${1} && \
 
-sudo rm /boot/*4.19* -f && \
+# update the boot menu to boot to latest kernel
 sudo update-grub2 && \
 # reboot the system
 sudo reboot
