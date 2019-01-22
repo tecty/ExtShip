@@ -4849,7 +4849,7 @@ no_journal:
 	// Please remove me?
 	while (1)
 	{
-		kprintf(KERN_INFO "should sleep");
+		printk(KERN_INFO "should sleep");
 	}
 
 	kfree(orig_data);
