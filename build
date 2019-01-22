@@ -1,9 +1,18 @@
 #!/bin/bash
 git pull
 
+# default value of compile source
+if [ ! $1 ]; then  
+       $1='host'  
+fi
+# default value of compile threads 
+if [ ! $2 ]; then  
+       $2=12
+fi
+
 # copy the source kernel 
-cp host/ext4/*  ../linux/fs/ext4 -r
-cp host/jbd2/*  ../linux/fs/jbd2 -r
+cp ${1}/ext4/*  ../linux/fs/ext4 -r
+cp ${1}/jbd2/*  ../linux/fs/jbd2 -r
 
 # build the kernel
 cd ../linux/
@@ -12,9 +21,9 @@ cd ../linux/
 sudo rm /boot/*4.19* -f 
 
 # start building the kernel
-make CC="ccache gcc" -j${1} && \
-sudo make CC="ccache gcc" modules_install -j${1} && \
-sudo make CC="ccache gcc" install -j${1} && \
+make CC="ccache gcc" -j${2} && \
+sudo make CC="ccache gcc" modules_install -j${2} && \
+sudo make CC="ccache gcc" install -j${2} && \
 
 # update the boot menu to boot to latest kernel
 sudo update-grub2 && \
